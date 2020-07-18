@@ -8,10 +8,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.nio.charset.StandardCharsets;
 
-//TODO: switch case for printcolor
+//TODO switch case for printcolor
+//TODO clean up ugly array handling that accounts for most of the lines
 
-
-//TODO: implement auto source?
+//TODO implement auto source?
 
 public class main{
 
