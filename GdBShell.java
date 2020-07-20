@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 
 //TODO switch case for printcolor
 //TODO clean up ugly array handling that accounts for most of the lines
+//TODO remove stringbuilders/buffers because they are unnecessary
 
 //TODO implement auto source?
 
@@ -203,7 +204,7 @@ public class main{
 				}
 			}
 		}
-		return;//TODO: clean up error messages
+		return;//TODO clean up error messages
 	}
 
 	static int parseRedirect(String[] inputArray){//should take pipe and read/write,, add >> for append?
