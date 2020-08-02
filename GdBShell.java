@@ -521,50 +521,37 @@ public class main{
 		String ANSI_GREEN = "\u001B[32m";
 
 		boolean returnBool= true;
-		String color= colorvar.toLowerCase();
+		String color= "";
 
-		if (color.equals("white")){
-			color=ANSI_WHITE;
+		switch(colorvar.toLowerCase()){
+			case "white":
+				color = ANSI_WHITE;
+				break;
+			case "black":
+				color = ANSI_BLACK;
+				break;
+			case "red":
+				color = ANSI_RED;
+				break;
+			case "yellow":
+				color = ANSI_YELLOW;
+				break;
+			case "blue":
+				color = ANSI_BLUE;
+				break;
+			case "purple":
+				color = ANSI_PURPLE;
+				break;
+			case "cyan":
+				color = ANSI_CYAN;
+				break;
+			case "green":
+				color = ANSI_GREEN;
+				break;
+			
+			default: returnBool = false;
 		}
-		else{
-			if (color.equals("black")){
-			color=ANSI_BLACK;
-			}
-			else{
-				if (color.equals("yellow")){
-				color=ANSI_YELLOW;
-				}
-				else{
-					if (color.equals("blue")){
-					color=ANSI_BLUE;
-					}
-					else{
-						if (color.equals("purple")){
-						color=ANSI_PURPLE;
-						}
-						else{
-							if (color.equals("cyan")){
-							color=ANSI_CYAN;
-							}
-							else{
-								if (color.equals("red")){
-								color=ANSI_RED;
-								}
-								else{
-									if (color.equals("green")){
-									color=ANSI_GREEN;
-									}
-									else{
-										System.out.print(text);
-										returnBool = false;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+
 
 		System.out.print(color+text + ANSI_RESET);
 
