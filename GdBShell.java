@@ -231,7 +231,7 @@ public class main {
 				}
 			}
 			else{*/
-            path = which(input);
+            path = which(input);//"/bin/"+input;
             //}
         } else {
             return Integer.MIN_VALUE + 1;
@@ -262,7 +262,7 @@ public class main {
                 //execute the program
                 execv(path, inputArray);
                 printColor("execv fatal error", "red", true);
-                exit(0);
+                exit(Integer.MIN_VALUE);
 
 
             }
