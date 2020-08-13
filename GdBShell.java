@@ -13,7 +13,7 @@ import static cTools.KernelWrapper.*;
 
 //TODO implement auto source?
 
-public class main {
+public class GdBShell {
 
     public static void main(String[] args) {
 
@@ -36,13 +36,12 @@ public class main {
 
         String directoryPath = System.getProperty("user.dir");
         String[] directoryArray = directoryPath.split("/");
-        StringBuffer buffer = new StringBuffer("~");
+        String str = "~";
 
 
         //gets rid of the home/user directory and builds a string
         for (int i = 3; (i < directoryArray.length); i++) {
-            buffer.append("/");
-            buffer.append(directoryArray[i]);
+            str = str + "/"+ directoryArray[i];
         }
         System.out.print("(" + runningInt + ")");
         printColor(shellPrefix, "purple", false);
@@ -112,7 +111,10 @@ public class main {
                 printColor("Stopped concatenation at command number " + (i - 1) + " \"" + String.join(" ", commandsArr[i - 1]) + "\":", "red", true);
             }
             switch (prevValue) {
-                //TODO add the internal error codes to print useful messages
+                
+                case -1:
+                printColor("Pipe failed","red",true);
+                break;
                 case Integer.MIN_VALUE + 1://from execute()
                     printColor("Entered empty command", "red", true);
                     break;
@@ -196,7 +198,8 @@ public class main {
         int lastIn = -1;
         int[] pipefd = new int[2];
         if (command.length > 1) {
-            pipe(pipefd);
+            returnValue = pipe(pipefd);
+            if(returnValue==-1){return returnValue;}
             returnValue = execute(command[0], fd_in, pipefd[1]);
             for (int i = 1; i < command.length - 1; i++) {
                 returnValue = execute(command[i], pipefd[0], pipefd[1]);
@@ -215,6 +218,7 @@ public class main {
 
 
     static int execute(String[] inputArray, int fd_in, int fd_out) {//0 for read, 1 for write
+        //System.out.println(Arrays.toString(inputArray));
         int[] intArray = new int[]{Integer.MIN_VALUE};//to pass to the waitpid function
         //split the Array into path and arguments
 
@@ -260,22 +264,29 @@ public class main {
                 }
 
                 //execute the program
-                execv(path, inputArray);
-                printColor("execv fatal error", "red", true);
-                exit(Integer.MIN_VALUE);
+                if(execv(path, inputArray)<0){
+                	printColor("execv fatal error", "red", true);
+                }
+                exit(1);
 
 
             }
 
             //papa process
             else {
-
-                waitpid(forkInt, intArray, 0);
+            	if (forkInt<0){
+            		printColor("Error: fork", "red",true);
+            		return forkInt;
+            	}
+                if(waitpid(forkInt, intArray, 0)<0){
+                	printColor("Error: waiting for child", "red",true);
+                	exit(1);
+                }
 
 
             }
         }
-        return intArray[0];
+        return intArray[0];//contains Integer.MIN_VALUE if no program was found using the which command
     }
 
     public static ArrayList<Integer> findArrayOccurrence(Object[] oArr, Object o) {
