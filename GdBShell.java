@@ -45,7 +45,7 @@ public class GdBShell {
         }
         System.out.print("(" + runningInt + ")");
         printColor(shellPrefix, "purple", false);
-        printColor(buffer.toString() + "$ ", "cyan", false);
+        printColor(str + "$ ", "cyan", false);
 
         String input = scn.nextLine();//get input
 
