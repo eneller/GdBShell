@@ -51,17 +51,15 @@ public class GdBShell {
 
         String[] inputArray = input.split("\\s+");//split at whitespace characters such as tabs and spaces
 
-
+        
         return inputArray;
 
     }
 
     static void parseInput(String[] inputArray) {
 
-        //check for empty inputs
-        if (inputArray.length == 0) {
-            return;
-        }
+        //check for empty inputs ?
+ 
 
         //implements the exit terminal function
         if (inputArray[0].equals("exit")) {
@@ -75,23 +73,24 @@ public class GdBShell {
 
         }
 
+
         String[][] commandsArr = splitArray(inputArray, "&&");
 
 
         int prevValue;//saves the return code of the previously executed command
 
-        int i = 0;//allows to save the command position
 
         //execute single commands here
 
-        prevValue = parseRedirect(commandsArr[i]);
-        i = 1;
+        prevValue = parseRedirect(commandsArr[0]);
+        int i;//allows to save the command position, one command already executed
 
 
         boolean singleCommand = true;
-
         //execute possible concatenations
-        for (; i < commandsArr.length; i++) {
+        for (i=1; i < commandsArr.length; i++) {
+                   System.out.println("crap");
+
             singleCommand = false;
             //execute if previous command was successful, else do error printing
 
@@ -130,7 +129,7 @@ public class GdBShell {
         return;
     }
 
-    static int parseRedirect(String[] inputArray) {//should take pipe and read/write,, add >> for append?
+    static int parseRedirect(String[] inputArray){//should take pipe and read/write,, add >> for append?
         //find last occurrences of < and >
         int redirectInPos = -1;
         int redirectOutPos = -1;
@@ -173,7 +172,7 @@ public class GdBShell {
         }
 
         String[] command = Arrays.copyOfRange(inputArray, 0, firstPos);
-
+        System.out.println(Arrays.toString(command) +" fdin: " +fd_in+ " fdout: "+fd_out);//verbose
         int returnValue = parsePipe(command, fd_in, fd_out);
 
         //close potential files
@@ -190,13 +189,14 @@ public class GdBShell {
     static int parsePipe(String[] inputArray, int fd_in, int fd_out) {
 
         String[][] command = splitArray(inputArray, "|");
+        //for(int i=0;i<command.length;i++){System.out.println(Arrays.toString(command[i]));}
 
 
         //execute commands
         int returnValue;
         //first command gets stdin
         int lastIn = -1;
-        int[] pipefd = new int[2];
+        int[] pipefd = new int[2];//array to pass to pipe as out parameter, contains the read end[0] and write end[1]
         if (command.length > 1) {
             returnValue = pipe(pipefd);
             if(returnValue==-1){return returnValue;}
@@ -210,6 +210,7 @@ public class GdBShell {
             lastIn = fd_in;
         }
         // execute last (or only) command
+        System.out.println(Arrays.toString(command[command.length - 1])+lastIn+fd_out);//verbose
         returnValue = execute(command[command.length - 1], lastIn, fd_out);
 
 
@@ -266,8 +267,10 @@ public class GdBShell {
                 //execute the program
                 if(execv(path, inputArray)<0){
                 	printColor("execv fatal error", "red", true);
+                    exit(1);
                 }
-                exit(1);
+                exit(0);
+                
 
 
             }
