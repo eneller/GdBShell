@@ -209,7 +209,7 @@ public class GdBShell {
 
 
     static int execute(String[] inputArray, int fd_in, boolean closefdIn, int fd_out, boolean closefdOut) {//0 for read, 1 for write
-        System.out.println(Arrays.toString(inputArray) + " fd_in: " + fd_in + " fd_out: " + fd_out);
+        //System.out.println(Arrays.toString(inputArray) + " fd_in: " + fd_in + " fd_out: " + fd_out);
         int[] intArray = new int[]{Integer.MIN_VALUE};//to pass to the waitpid function
         //split the Array into path and arguments
 
@@ -367,7 +367,7 @@ public class GdBShell {
 
     public static boolean checkls(String input) {
 
-        //check what ls does in this program if executed locally
+        
         String[] inputArray = input.split("/");
         String checkfile = inputArray[inputArray.length - 1];
         StringBuffer buffer1 = new StringBuffer();
