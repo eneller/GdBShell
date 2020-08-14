@@ -89,7 +89,7 @@ public class GdBShell {
         boolean singleCommand = true;
         //execute possible concatenations
         for (i=1; i < commandsArr.length; i++) {
-                   System.out.println("crap");
+                   
 
             singleCommand = false;
             //execute if previous command was successful, else do error printing
@@ -112,8 +112,8 @@ public class GdBShell {
             switch (prevValue) {
                 
                 case -1:
-                printColor("Pipe failed","red",true);
-                break;
+                    printColor("Pipe failed","red",true);
+                    break;
                 case Integer.MIN_VALUE + 1://from execute()
                     printColor("Entered empty command", "red", true);
                     break;
@@ -172,7 +172,6 @@ public class GdBShell {
         }
 
         String[] command = Arrays.copyOfRange(inputArray, 0, firstPos);
-        System.out.println(Arrays.toString(command) +" fdin: " +fd_in+ " fdout: "+fd_out);//verbose
         int returnValue = parsePipe(command, fd_in, fd_out);
 
         //close potential files
@@ -196,11 +195,11 @@ public class GdBShell {
         int returnValue;
         //first command gets stdin
         int lastIn = -1;
-        int[] pipefd = new int[2];//array to pass to pipe as out parameter, contains the read end[0] and write end[1]
+        int[] pipefd = new int[2];//array to pass to pipe as out parameter, then contains the read end[0] and write end[1]
         if (command.length > 1) {
             returnValue = pipe(pipefd);
-            if(returnValue==-1){return returnValue;}
-            returnValue = execute(command[0], fd_in, pipefd[1]);
+            if(returnValue!=0){printColor("error","cyan", true);return returnValue;}
+            returnValue = execute(command[0], fd_in, pipefd[1]);//execute first command with potential input from file
             for (int i = 1; i < command.length - 1; i++) {
                 returnValue = execute(command[i], pipefd[0], pipefd[1]);
 
@@ -210,7 +209,7 @@ public class GdBShell {
             lastIn = fd_in;
         }
         // execute last (or only) command
-        System.out.println(Arrays.toString(command[command.length - 1])+lastIn+fd_out);//verbose
+        
         returnValue = execute(command[command.length - 1], lastIn, fd_out);
 
 
@@ -219,7 +218,7 @@ public class GdBShell {
 
 
     static int execute(String[] inputArray, int fd_in, int fd_out) {//0 for read, 1 for write
-        //System.out.println(Arrays.toString(inputArray));
+        System.out.println(Arrays.toString(inputArray)+ " fd_in: "+fd_in+" fd_out: "+fd_out);
         int[] intArray = new int[]{Integer.MIN_VALUE};//to pass to the waitpid function
         //split the Array into path and arguments
 
@@ -281,6 +280,10 @@ public class GdBShell {
             		printColor("Error: fork", "red",true);
             		return forkInt;
             	}
+                //close open files that only the child process needs
+                if(fd_in!=-1){close(fd_in);}
+                if(fd_out!=-1){close(fd_out);}
+                //wait for child
                 if(waitpid(forkInt, intArray, 0)<0){
                 	printColor("Error: waiting for child", "red",true);
                 	exit(1);
