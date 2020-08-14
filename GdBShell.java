@@ -150,9 +150,9 @@ public class GdBShell {
                     setFirstBool = false;
                 }
             }
-			/*if(inputArray[i].equals(">>")){
-				appendOutPos = i;
-			}*/
+            /*if(inputArray[i].equals(">>")){
+                appendOutPos = i;
+            }*/
         }
 
 
@@ -175,6 +175,7 @@ public class GdBShell {
         int returnValue = parsePipe(command, fd_in, fd_out);
 
         //close potential files
+        
         if (fd_in != -1) {
             close(fd_in);
         }
@@ -196,12 +197,16 @@ public class GdBShell {
         //first command gets stdin
         int lastIn = -1;
         int[] pipefd = new int[2];//array to pass to pipe as out parameter, then contains the read end[0] and write end[1]
+        
         if (command.length > 1) {
             returnValue = pipe(pipefd);
-            if(returnValue!=0){printColor("error","cyan", true);return returnValue;}
-            returnValue = execute(command[0], fd_in, pipefd[1]);//execute first command with potential input from file
+            if(returnValue!=0){printColor("Error opening pipe","red", true);return returnValue;}
+            
+            returnValue = execute(command[0], fd_in,false, pipefd[1],true);//execute first command with potential input from file
+            
             for (int i = 1; i < command.length - 1; i++) {
-                returnValue = execute(command[i], pipefd[0], pipefd[1]);
+                
+                returnValue = execute(command[i], pipefd[0],false, pipefd[1],true);
 
             }
             lastIn = pipefd[0];
@@ -210,14 +215,17 @@ public class GdBShell {
         }
         // execute last (or only) command
         
-        returnValue = execute(command[command.length - 1], lastIn, fd_out);
+        returnValue = execute(command[command.length - 1], lastIn,true, fd_out,true);
+
+        
+ 
 
 
         return returnValue;
     }
 
 
-    static int execute(String[] inputArray, int fd_in, int fd_out) {//0 for read, 1 for write
+    static int execute(String[] inputArray, int fd_in,boolean closefdIn, int fd_out, boolean closefdOut) {//0 for read, 1 for write
         System.out.println(Arrays.toString(inputArray)+ " fd_in: "+fd_in+" fd_out: "+fd_out);
         int[] intArray = new int[]{Integer.MIN_VALUE};//to pass to the waitpid function
         //split the Array into path and arguments
@@ -227,14 +235,14 @@ public class GdBShell {
         if (inputArray.length > 0) {
 
             String input = inputArray[0];
-			/*
-			if (input.indexOf("/")>-1){
-				if (checkls(input)==true){
-					
-					path = input;
-				}
-			}
-			else{*/
+            /*
+            if (input.indexOf("/")>-1){
+                if (checkls(input)==true){
+                    
+                    path = input;
+                }
+            }
+            else{*/
             path = which(input);//"/bin/"+input;
             //}
         } else {
@@ -265,7 +273,7 @@ public class GdBShell {
 
                 //execute the program
                 if(execv(path, inputArray)<0){
-                	printColor("execv fatal error", "red", true);
+                    printColor("execv fatal error", "red", true);
                     exit(1);
                 }
                 exit(0);
@@ -276,17 +284,18 @@ public class GdBShell {
 
             //papa process
             else {
-            	if (forkInt<0){
-            		printColor("Error: fork", "red",true);
-            		return forkInt;
-            	}
+                if (forkInt<0){
+                    printColor("Error: fork", "red",true);
+                    return forkInt;
+                }
                 //close open files that only the child process needs
-                if(fd_in!=-1){close(fd_in);}
-                if(fd_out!=-1){close(fd_out);}
+                if(closefdIn&&fd_in!=-1){close(fd_in);}
+                if(closefdOut&&fd_out!=-1){close(fd_out);}
+                
                 //wait for child
                 if(waitpid(forkInt, intArray, 0)<0){
-                	printColor("Error: waiting for child", "red",true);
-                	exit(1);
+                    printColor("Error: waiting for child", "red",true);
+                    exit(1);
                 }
 
 
