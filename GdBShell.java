@@ -7,16 +7,10 @@ import java.util.Scanner;
 
 import static cTools.KernelWrapper.*;
 
-//TODO find why some calls dont terminate
-
-//TODO remove stringbuilders/buffers because they are unnecessary
-
-//TODO implement auto source?
 
 public class GdBShell {
 
     public static void main(String[] args) {
-
 
         System.out.println("Welcome!");
         String shellPrefix = "EN@GdBShell:";//print actual user instead of EN??
@@ -41,7 +35,7 @@ public class GdBShell {
 
         //gets rid of the home/user directory and builds a string
         for (int i = 3; (i < directoryArray.length); i++) {
-            str = str + "/"+ directoryArray[i];
+            str = str + "/" + directoryArray[i];
         }
         System.out.print("(" + runningInt + ")");
         printColor(shellPrefix, "purple", false);
@@ -51,7 +45,7 @@ public class GdBShell {
 
         String[] inputArray = input.split("\\s+");//split at whitespace characters such as tabs and spaces
 
-        
+
         return inputArray;
 
     }
@@ -59,7 +53,7 @@ public class GdBShell {
     static void parseInput(String[] inputArray) {
 
         //check for empty inputs ?
- 
+
 
         //implements the exit terminal function
         if (inputArray[0].equals("exit")) {
@@ -88,8 +82,8 @@ public class GdBShell {
 
         boolean singleCommand = true;
         //execute possible concatenations
-        for (i=1; i < commandsArr.length; i++) {
-                   
+        for (i = 1; i < commandsArr.length; i++) {
+
 
             singleCommand = false;
             //execute if previous command was successful, else do error printing
@@ -97,39 +91,21 @@ public class GdBShell {
 
             if (prevValue == 0) {
 
-                printColor("Process exited without error", "green", true);
                 prevValue = parseRedirect(commandsArr[i]);
             } else {
                 break;
             }
         }
-        if (prevValue == 0) {
-            printColor("Process exited without error", "green", true);
-        } else {
-            if (singleCommand == false) {
-                printColor("Stopped concatenation at command number " + (i - 1) + " \"" + String.join(" ", commandsArr[i - 1]) + "\":", "red", true);
-            }
-            switch (prevValue) {
-                
-                case -1:
-                    printColor("Pipe failed","red",true);
-                    break;
-                case Integer.MIN_VALUE + 1://from execute()
-                    printColor("Entered empty command", "red", true);
-                    break;
-                case Integer.MIN_VALUE://from execute
-                    printColor("Couldn't find executable assigned to \"" + Arrays.toString(commandsArr[i - 1]) + "\"", "red", true);
-                    break;
-                default:
-                    printColor("Exited with error code " + prevValue, "red", true);//everything else
-            }
+
+        if (prevValue != 0 && singleCommand == false) {
+            printColor("Stopped concatenation at command number " + (i - 1) + " \"" + String.join(" ", commandsArr[i - 1]) + "\"", "red", true);
         }
 
 
         return;
     }
 
-    static int parseRedirect(String[] inputArray){//should take pipe and read/write,, add >> for append?
+    static int parseRedirect(String[] inputArray) {//should take pipe and read/write,, add >> for append?
         //find last occurrences of < and >
         int redirectInPos = -1;
         int redirectOutPos = -1;
@@ -159,29 +135,26 @@ public class GdBShell {
         //TODO look up error return value of OPEN to separate from no redirect initialized as -1
         int fd_in = -1;
         if (redirectInPos != -1) {
-            if (checkls(inputArray[redirectInPos + 1])) {
+            if (inputArray.length > redirectInPos + 1 && checkls(inputArray[redirectInPos + 1])) {
                 fd_in = open(inputArray[redirectInPos + 1], O_RDONLY);
             } else {
-                return -10;
+                printColor("Error: Invalid input file path", "red", true);
+                return -1;
             }//throw error because invalid input file
         }
 
         int fd_out = -1;
         if (redirectOutPos != -1) {
             fd_out = open(inputArray[redirectOutPos + 1], O_WRONLY | O_CREAT | O_TRUNC);//overwrite file if exists, create else
+            if (inputArray.length <= redirectOutPos + 1) {
+                printColor("Error: No output file specified after redirect output symbol", "red", true);
+                return -1;
+            }
         }
 
         String[] command = Arrays.copyOfRange(inputArray, 0, firstPos);
         int returnValue = parsePipe(command, fd_in, fd_out);
 
-        //close potential files
-        /*
-        if (fd_in != -1) {
-            close(fd_in);
-        }
-        if (fd_out != -1) {
-            close(fd_out);
-        }*/
         return returnValue;
 
     }
@@ -189,11 +162,10 @@ public class GdBShell {
     static int parsePipe(String[] inputArray, int fd_in, int fd_out) {
 
         String[][] command = splitArray(inputArray, "|");
-        //for(int i=0;i<command.length;i++){System.out.println(Arrays.toString(command[i]));}
 
 
         //execute commands
-        int returnValue;
+        int returnValue = 0;
         //first command gets stdin
         int lastIn = -1;
         int[] pipe1fd = new int[2];//array to pass to pipe as out parameter, then contains the read end[0] and write end[1]
@@ -201,15 +173,22 @@ public class GdBShell {
         int[] pipe3fd;
         if (command.length > 1) {
             returnValue = pipe(pipe1fd);
-            if(returnValue!=0){printColor("Error opening pipe","red", true);return returnValue;}
-            
-            returnValue = execute(command[0], fd_in,false, pipe1fd[1],true);//execute first command with potential input from file
-            
+            if (returnValue != 0) {
+                printColor("Error opening pipe", "red", true);
+                return returnValue;
+            }
+
+            returnValue = execute(command[0], fd_in, false, pipe1fd[1], true);//execute first command with potential input from file
+
             for (int i = 1; i < command.length - 1; i++) {
                 returnValue = pipe(pipe2fd);
-                if(returnValue!=0){printColor("Error opening pipe","red", true);return returnValue;}
-                returnValue = execute(command[i], pipe1fd[0],true, pipe2fd[1],true);
-                
+                if (returnValue != 0) {
+                    printColor("Error opening pipe", "red", true);
+                    return returnValue;
+                }
+
+                returnValue = greaterAbsolute(execute(command[i], pipe1fd[0], true, pipe2fd[1], true), returnValue);
+
                 //variable swap
                 pipe3fd = pipe2fd;
                 pipe2fd = pipe1fd;
@@ -221,19 +200,16 @@ public class GdBShell {
             lastIn = fd_in;
         }
         // execute last (or only) command
-        
-        returnValue = execute(command[command.length - 1], lastIn,true, fd_out,true);
 
-        
- 
+        returnValue = greaterAbsolute(execute(command[command.length - 1], lastIn, true, fd_out, true), returnValue);
 
 
         return returnValue;
     }
 
 
-    static int execute(String[] inputArray, int fd_in,boolean closefdIn, int fd_out, boolean closefdOut) {//0 for read, 1 for write
-        System.out.println(Arrays.toString(inputArray)+ " fd_in: "+fd_in+" fd_out: "+fd_out);
+    static int execute(String[] inputArray, int fd_in, boolean closefdIn, int fd_out, boolean closefdOut) {//0 for read, 1 for write
+        System.out.println(Arrays.toString(inputArray) + " fd_in: " + fd_in + " fd_out: " + fd_out);
         int[] intArray = new int[]{Integer.MIN_VALUE};//to pass to the waitpid function
         //split the Array into path and arguments
 
@@ -253,7 +229,8 @@ public class GdBShell {
             path = which(input);//"/bin/"+input;
             //}
         } else {
-            return Integer.MIN_VALUE + 1;
+            printColor("Entered empty command", "red", true);
+            return -1;
         }// internal error code
 
 
@@ -279,36 +256,47 @@ public class GdBShell {
                 }
 
                 //execute the program
-                if(execv(path, inputArray)<0){
+                if (execv(path, inputArray) < 0) {
                     printColor("execv fatal error", "red", true);
                     exit(1);
                 }
                 exit(0);
-                
 
 
             }
 
             //papa process
             else {
-                if (forkInt<0){
-                    printColor("Error: fork", "red",true);
+                if (forkInt < 0) {
+                    printColor("Error: fork() returned Error", "red", true);
                     return forkInt;
                 }
                 //close open files that only the child process needs
-                if(closefdIn&&fd_in!=-1){close(fd_in);}
-                if(closefdOut&&fd_out!=-1){close(fd_out);}
-                
+                if (closefdIn && fd_in != -1) {
+                    close(fd_in);
+                }
+                if (closefdOut && fd_out != -1) {
+                    close(fd_out);
+                }
+
                 //wait for child
-                if(waitpid(forkInt, intArray, 0)<0){
-                    printColor("Error: waiting for child", "red",true);
+                int f;
+                if ((f = waitpid(forkInt, intArray, 0)) < 0) {
+                    printColor("Error " + f + ": waiting for child", "red", true);
                     exit(1);
+                }
+                if (intArray[0] == 0) {
+                    printColor("Process exited without error", "green", true);
+                } else {
+                    printColor("Process exited with error code " + intArray[0], "red", true);
                 }
 
 
             }
+        } else {
+            printColor("Couldn't find executable assigned to \"" + inputArray[0] + "\"", "red", true);
         }
-        return intArray[0];//contains Integer.MIN_VALUE if no program was found using the which command
+        return intArray[0];
     }
 
     public static ArrayList<Integer> findArrayOccurrence(Object[] oArr, Object o) {
@@ -331,6 +319,14 @@ public class GdBShell {
             prevOcc = aList.get(i) + 1;
         }
         return sArr;
+    }
+
+    public static int greaterAbsolute(int a, int b) {
+        if (Math.abs(a) > Math.abs(b)) {
+            return a;
+        } else {
+            return b;
+        }
     }
 
 
