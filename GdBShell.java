@@ -118,7 +118,7 @@ public class GdBShell {
                     printColor("Entered empty command", "red", true);
                     break;
                 case Integer.MIN_VALUE://from execute
-                    printColor("Couldn't find executable assigned to \"" + commandsArr[i - 1][0] + "\"", "red", true);
+                    printColor("Couldn't find executable assigned to \"" + Arrays.toString(commandsArr[i - 1]) + "\"", "red", true);
                     break;
                 default:
                     printColor("Exited with error code " + prevValue, "red", true);//everything else
@@ -175,13 +175,13 @@ public class GdBShell {
         int returnValue = parsePipe(command, fd_in, fd_out);
 
         //close potential files
-        
+        /*
         if (fd_in != -1) {
             close(fd_in);
         }
         if (fd_out != -1) {
             close(fd_out);
-        }
+        }*/
         return returnValue;
 
     }
@@ -196,20 +196,27 @@ public class GdBShell {
         int returnValue;
         //first command gets stdin
         int lastIn = -1;
-        int[] pipefd = new int[2];//array to pass to pipe as out parameter, then contains the read end[0] and write end[1]
-        
+        int[] pipe1fd = new int[2];//array to pass to pipe as out parameter, then contains the read end[0] and write end[1]
+        int[] pipe2fd = new int[2];
+        int[] pipe3fd;
         if (command.length > 1) {
-            returnValue = pipe(pipefd);
+            returnValue = pipe(pipe1fd);
             if(returnValue!=0){printColor("Error opening pipe","red", true);return returnValue;}
             
-            returnValue = execute(command[0], fd_in,false, pipefd[1],true);//execute first command with potential input from file
+            returnValue = execute(command[0], fd_in,false, pipe1fd[1],true);//execute first command with potential input from file
             
             for (int i = 1; i < command.length - 1; i++) {
+                returnValue = pipe(pipe2fd);
+                if(returnValue!=0){printColor("Error opening pipe","red", true);return returnValue;}
+                returnValue = execute(command[i], pipe1fd[0],true, pipe2fd[1],true);
                 
-                returnValue = execute(command[i], pipefd[0],false, pipefd[1],true);
+                //variable swap
+                pipe3fd = pipe2fd;
+                pipe2fd = pipe1fd;
+                pipe1fd = pipe3fd;
 
             }
-            lastIn = pipefd[0];
+            lastIn = pipe1fd[0];
         } else {
             lastIn = fd_in;
         }
