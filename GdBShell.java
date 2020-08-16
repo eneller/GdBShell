@@ -146,6 +146,7 @@ public class GdBShell {
         int fd_out = -1;
         if (redirectOutPos != -1) {
             fd_out = open(inputArray[redirectOutPos + 1], O_WRONLY | O_CREAT | O_TRUNC);//overwrite file if exists, create else
+
             if (inputArray.length <= redirectOutPos + 1) {
                 printColor("Error: No output file specified after redirect output symbol", "red", true);
                 return -1;
@@ -155,6 +156,8 @@ public class GdBShell {
         String[] command = Arrays.copyOfRange(inputArray, 0, firstPos);
         int returnValue = parsePipe(command, fd_in, fd_out);
 
+
+        
         return returnValue;
 
     }
@@ -178,7 +181,7 @@ public class GdBShell {
                 return returnValue;
             }
 
-            returnValue = execute(command[0], fd_in, false, pipe1fd[1], true);//execute first command with potential input from file
+            returnValue = execute(command[0], fd_in, pipe1fd[1]);//execute first command with potential input from file
 
             for (int i = 1; i < command.length - 1; i++) {
                 returnValue = pipe(pipe2fd);
@@ -187,7 +190,7 @@ public class GdBShell {
                     return returnValue;
                 }
 
-                returnValue = greaterAbsolute(execute(command[i], pipe1fd[0], true, pipe2fd[1], true), returnValue);
+                returnValue = greaterAbsolute(execute(command[i], pipe1fd[0], pipe2fd[1]), returnValue);
 
                 //variable swap
                 pipe3fd = pipe2fd;
@@ -201,14 +204,14 @@ public class GdBShell {
         }
         // execute last (or only) command
 
-        returnValue = greaterAbsolute(execute(command[command.length - 1], lastIn, true, fd_out, true), returnValue);
+        returnValue = greaterAbsolute(execute(command[command.length - 1], lastIn, fd_out), returnValue);
 
 
         return returnValue;
     }
 
 
-    static int execute(String[] inputArray, int fd_in, boolean closefdIn, int fd_out, boolean closefdOut) {//0 for read, 1 for write
+    static int execute(String[] inputArray, int fd_in, int fd_out) {//0 for read, 1 for write
         //System.out.println(Arrays.toString(inputArray) + " fd_in: " + fd_in + " fd_out: " + fd_out);
         int[] intArray = new int[]{Integer.MIN_VALUE};//to pass to the waitpid function
         //split the Array into path and arguments
@@ -218,14 +221,7 @@ public class GdBShell {
         if (inputArray.length > 0) {
 
             String input = inputArray[0];
-            /*
-            if (input.indexOf("/")>-1){
-                if (checkls(input)==true){
-                    
-                    path = input;
-                }
-            }
-            else{*/
+           
             path = which(input);//"/bin/"+input;
             //}
         } else {
@@ -272,11 +268,12 @@ public class GdBShell {
                     return forkInt;
                 }
                 //close open files that only the child process needs
-                if (closefdIn && fd_in != -1) {
+                if (fd_in != -1) {
                     close(fd_in);
                 }
-                if (closefdOut && fd_out != -1) {
+                if (fd_out != -1) {
                     close(fd_out);
+
                 }
 
                 //wait for child
