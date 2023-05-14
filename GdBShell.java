@@ -29,17 +29,11 @@ public class GdBShell {
 
 
         String directoryPath = System.getProperty("user.dir");
-        String[] directoryArray = directoryPath.split("/");
-        String str = "~";
+        directoryPath = directoryPath.replaceAll("^/home/\\w+", "~");
 
-
-        //gets rid of the home/user directory and builds a string
-        for (int i = 3; (i < directoryArray.length); i++) {
-            str = str + "/" + directoryArray[i];
-        }
         System.out.print("(" + runningInt + ")");
-        printColor(shellPrefix, "purple", false);
-        printColor(str + "$ ", "cyan", false);
+        printColor(shellPrefix, AnsiColor.ANSI_PURPLE, false);
+        printColor(directoryPath + "$ ", AnsiColor.ANSI_CYAN, false);
 
         String input = scn.nextLine();//get input
 
@@ -58,10 +52,10 @@ public class GdBShell {
         //implements the exit terminal function
         if (inputArray[0].equals("exit")) {
             if (inputArray.length == 1) {
-                printColor("Session ended by user", "red", true);
+                printErr("Session ended by user");
                 System.exit(0);
             } else {
-                printColor("\"exit\" doesn't take parameters. It will end this current shell. Did you try to find a different executable?", "red", true);
+                printColor("\"exit\" doesn't take parameters. It will end this current shell. Did you try to find a different executable?", AnsiColor.ANSI_RED, true);
                 return;
             }
 
@@ -97,12 +91,11 @@ public class GdBShell {
             }
         }
 
-        if (prevValue != 0 && singleCommand == false) {
-            printColor("Stopped concatenation at command number " + (i - 1) + " \"" + String.join(" ", commandsArr[i - 1]) + "\"", "red", true);
+        if (prevValue != 0 && !singleCommand) {
+            printErr("Stopped concatenation at command number " + (i - 1) + " \"" + String.join(" ", commandsArr[i - 1]) + "\"");
         }
 
 
-        return;
     }
 
     static int parseRedirect(String[] inputArray) {//should take pipe and read/write,, add >> for append?
@@ -138,7 +131,7 @@ public class GdBShell {
             if (inputArray.length > redirectInPos + 1 && checkls(inputArray[redirectInPos + 1])) {
                 fd_in = open(inputArray[redirectInPos + 1], O_RDONLY);
             } else {
-                printColor("Error: Invalid input file path", "red", true);
+                printErr("Error: Invalid input file path");
                 return -1;
             }//throw error because invalid input file
         }
@@ -148,7 +141,7 @@ public class GdBShell {
             fd_out = open(inputArray[redirectOutPos + 1], O_WRONLY | O_CREAT | O_TRUNC);//overwrite file if exists, create else
 
             if (inputArray.length <= redirectOutPos + 1) {
-                printColor("Error: No output file specified after redirect output symbol", "red", true);
+                printErr("Error: No output file specified after redirect output symbol");
                 return -1;
             }
         }
@@ -157,7 +150,6 @@ public class GdBShell {
         int returnValue = parsePipe(command, fd_in, fd_out);
 
 
-        
         return returnValue;
 
     }
@@ -177,7 +169,7 @@ public class GdBShell {
         if (command.length > 1) {
             returnValue = pipe(pipe1fd);
             if (returnValue != 0) {
-                printColor("Error opening pipe", "red", true);
+                printErr("Error opening pipe");
                 return returnValue;
             }
 
@@ -186,7 +178,7 @@ public class GdBShell {
             for (int i = 1; i < command.length - 1; i++) {
                 returnValue = pipe(pipe2fd);
                 if (returnValue != 0) {
-                    printColor("Error opening pipe", "red", true);
+                    printErr("Error opening pipe");
                     return returnValue;
                 }
 
@@ -221,18 +213,18 @@ public class GdBShell {
         if (inputArray.length > 0) {
 
             String input = inputArray[0];
-           
+
             path = which(input);//"/bin/"+input;
             //}
         } else {
-            printColor("Entered empty command", "red", true);
+            printErr("Entered empty command");
             return -1;
         }// internal error code
 
 
         //if path found, compile argslist and start execv
-        if (isNumeric(path) == false) {
-            printColor("Executing program at " + path, "green", true);
+        if (!isNumeric(path)) {
+            printColor("Executing program at " + path, AnsiColor.ANSI_GREEN, true);
 
             int forkInt = fork();// saves the return value because every call will fork the process again
 
@@ -253,7 +245,7 @@ public class GdBShell {
 
                 //execute the program
                 if (execv(path, inputArray) < 0) {
-                    printColor("execv fatal error", "red", true);
+                    printErr("execv fatal error");
                     exit(1);
                 }
                 exit(0);
@@ -264,7 +256,7 @@ public class GdBShell {
             //papa process
             else {
                 if (forkInt < 0) {
-                    printColor("Error: fork() returned Error", "red", true);
+                    printErr("Error: fork() returned Error");
                     return forkInt;
                 }
                 //close open files that only the child process needs
@@ -279,19 +271,19 @@ public class GdBShell {
                 //wait for child
                 int f;
                 if ((f = waitpid(forkInt, intArray, 0)) < 0) {
-                    printColor("Error " + f + ": waiting for child", "red", true);
+                    printErr("Error " + f + ": waiting for child");
                     exit(1);
                 }
                 if (intArray[0] == 0) {
-                    printColor("Process exited without error", "green", true);
+                    printColor("Process exited without error", AnsiColor.ANSI_GREEN, true);
                 } else {
-                    printColor("Process exited with error code " + intArray[0], "red", true);
+                    printErr("Process exited with error code " + intArray[0]);
                 }
 
 
             }
         } else {
-            printColor("Couldn't find executable assigned to \"" + inputArray[0] + "\"", "red", true);
+            printErr("Couldn't find executable assigned to \"" + inputArray[0] + "\"");
         }
         return intArray[0];
     }
@@ -321,9 +313,8 @@ public class GdBShell {
     public static int greaterAbsolute(int a, int b) {
         if (Math.abs(a) > Math.abs(b)) {
             return a;
-        } else {
-            return b;
         }
+        return b;
     }
 
 
@@ -353,9 +344,9 @@ public class GdBShell {
                 //System.out.println("\nExited with error code : " + exitCode);
             }
         } catch (IOException e) {
-            printColor("err1", "red", true);
+            printErr("err1");
         } catch (InterruptedException e) {
-            printColor("err2", "red", true);
+            printErr("err2");
         }
 
         return "t";
@@ -364,7 +355,7 @@ public class GdBShell {
 
     public static boolean checkls(String input) {
 
-        
+
         String[] inputArray = input.split("/");
         String checkfile = inputArray[inputArray.length - 1];
         StringBuffer buffer1 = new StringBuffer();
@@ -379,7 +370,7 @@ public class GdBShell {
         }
 
         ProcessBuilder prcBuilder = new ProcessBuilder();
-        prcBuilder.command("bash", "-c", "ls " + buffer1.toString());
+        prcBuilder.command("bash", "-c", "ls " + buffer1);
 
 
         try {
@@ -405,9 +396,9 @@ public class GdBShell {
                 //System.out.println("\nExited with error code : " + exitCode);
             }
         } catch (IOException e) {
-            printColor("err1", "red", true);
+            printErr("err1");
         } catch (InterruptedException e) {
-            printColor("err2", "red", true);
+            printErr("err2");
         }
 
         return false;
@@ -426,59 +417,37 @@ public class GdBShell {
     }
 
 
-    static boolean printColor(String text, String colorvar, boolean lineBreak) {// maybe rainbow??
-        //takes two Strings and one boolean that specify the text to print, the color and if there should be a linebreak (ie print or println)
+    enum AnsiColor {
+        ANSI_RESET("\u001B[0m"),
+        ANSI_BLACK("\u001B[30m"),
+        ANSI_RED("\u001B[31m"),
+        ANSI_YELLOW("\u001B[33m"),
+        ANSI_BLUE("\u001B[34m"),
+        ANSI_PURPLE("\u001B[35m"),
+        ANSI_CYAN("\u001B[36m"),
+        ANSI_WHITE("\u001B[37m"),
+        ANSI_GREEN("\u001B[32m");
+        private final String colorCode;
 
-        String ANSI_RESET = "\u001B[0m";
-        String ANSI_BLACK = "\u001B[30m";
-        String ANSI_RED = "\u001B[31m";
-        String ANSI_YELLOW = "\u001B[33m";
-        String ANSI_BLUE = "\u001B[34m";
-        String ANSI_PURPLE = "\u001B[35m";
-        String ANSI_CYAN = "\u001B[36m";
-        String ANSI_WHITE = "\u001B[37m";
-        String ANSI_GREEN = "\u001B[32m";
-
-        boolean returnBool = true;
-        String color = "";
-
-        switch (colorvar.toLowerCase()) {
-            case "white":
-                color = ANSI_WHITE;
-                break;
-            case "black":
-                color = ANSI_BLACK;
-                break;
-            case "red":
-                color = ANSI_RED;
-                break;
-            case "yellow":
-                color = ANSI_YELLOW;
-                break;
-            case "blue":
-                color = ANSI_BLUE;
-                break;
-            case "purple":
-                color = ANSI_PURPLE;
-                break;
-            case "cyan":
-                color = ANSI_CYAN;
-                break;
-            case "green":
-                color = ANSI_GREEN;
-                break;
-
-            default:
-                returnBool = false;
+        AnsiColor(String colorCode) {
+            this.colorCode = colorCode;
+        }
+        public String toString(){
+            return this.colorCode;
         }
 
 
-        System.out.print(color + text + ANSI_RESET);
+    }
+    static void printColor(String text, AnsiColor color, boolean lineBreak) {// maybe rainbow??
+        System.out.print(color + text + AnsiColor.ANSI_RESET);
 
         if (lineBreak) {
             System.out.println();
         }
-        return returnBool;
+    }
+
+    static void printErr(String text){
+        printColor(text, AnsiColor.ANSI_RED, true);
     }
 
     static String[] replaceCat(String[] args) {//used to integrate custom cat into shell
@@ -487,9 +456,8 @@ public class GdBShell {
             changed[0] = "java";
             changed[1] = "cat.java";
 
-            for (int i = 1; i < args.length; i++) {//ignore the "jcat" at first pos
-                changed[i + 1] = args[i];
-            }
+            //ignore the "jcat" at first pos
+            System.arraycopy(args, 1, changed, 2, args.length - 1);
 
             return changed;
         } else {
